@@ -45,25 +45,12 @@ public class HuffProcessor {
 	public void compress(BitInputStream in, BitOutputStream out){
 
 		HuffNode node = treeMaker(in);
-		String[] encoding  = new String[ALPH_SIZE + 1];
-		codeWriter(node, encoding, "");
+		String[] encodings  = new String[ALPH_SIZE + 1];
+		codeWriter(node, encodings, "");
 		out.writeBits(BITS_PER_INT, HUFF_TREE);
 		writeTreeHeader(node, out);
 		in.reset();
-		
-		while(true) 
-		{
-			int bits = in.readBits(BITS_PER_WORD);
-			if (bits == -1) break;
-
-			String code = encoding[bits];
-			if (code != null) {
-				out.writeBits(code.length(), Integer.parseInt(code, 2)); 
-			}
-		}
-		String eofcode = encoding[PSEUDO_EOF];
-		out.writeBits(eofcode.length(), Integer.parseInt(eofcode,2));
-		
+		writeCompressedBits(encodings, in, out);
 		out.close();	
 	}
 	
@@ -184,5 +171,27 @@ public class HuffProcessor {
 				}	
 			}
 		}
+	}
+	
+	/**
+	 * 
+	 * @param encodings
+	 * @param in
+	 * @param out
+	 */
+	private void writeCompressedBits(String[] encodings, BitInputStream in, BitOutputStream out)
+	{
+		while(true) 
+		{
+			int bits = in.readBits(BITS_PER_WORD);
+			if (bits == -1) break;
+
+			String code = encodings[bits];
+			if (code != null) {
+				out.writeBits(code.length(), Integer.parseInt(code, 2)); 
+			}
+		}
+		String eofcode = encodings[PSEUDO_EOF];
+		out.writeBits(eofcode.length(), Integer.parseInt(eofcode,2));
 	}
 }
