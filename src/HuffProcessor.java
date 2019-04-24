@@ -67,7 +67,7 @@ public class HuffProcessor {
 		out.close();	
 	}
 	
-	public HuffNode treeMaker(BitInputStream in){
+	private HuffNode treeMaker(BitInputStream in){
 		int[] counts = new int[ALPH_SIZE + 1];
 		int bits = in.readBits(BITS_PER_WORD);
 		
