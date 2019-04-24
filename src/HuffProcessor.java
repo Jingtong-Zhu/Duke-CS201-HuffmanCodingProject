@@ -1,5 +1,7 @@
 import java.util.*;
 
+//good video explaining huffman: https://www.youtube.com/watch?v=dM6us854Jk0
+
 /**
  * Although this class has a history of several years,
  * it is starting from a blank-slate, new and clean implementation
@@ -8,7 +10,7 @@ import java.util.*;
  * Changes include relying solely on a tree for header information
  * and including debug and bits read/written information
  * 
- * @author Owen Astrachan
+ * @author Geoff Gaugler and Ashley Lanzas
  */
 
 public class HuffProcessor {
@@ -35,7 +37,7 @@ public class HuffProcessor {
 
 	public void compress(BitInputStream in, BitOutputStream out)
 	{
-		int[] counts = new int[ALPH_SIZE + 1];
+		int[] counts = new int[1 + ALPH_SIZE];
 		
 		int bits = in.readBits(BITS_PER_WORD);
 
@@ -57,17 +59,17 @@ public class HuffProcessor {
 
 		while (prioriguy.size() > 1) 
 		{ 
-			HuffNode left = prioriguy.remove();
-			HuffNode right = prioriguy.remove();
+			HuffNode l = prioriguy.remove();
+			HuffNode r = prioriguy.remove();
 
-			HuffNode newTree = new HuffNode(0, left.myWeight + right.myWeight, left, right);
+			HuffNode newTree = new HuffNode(0, l.myWeight + r.myWeight, l, r);
 			prioriguy.add(newTree);
 		}
 
 		HuffNode node = prioriguy.remove();
 
-		String[] codings = new String[ALPH_SIZE + 1];
-		makeCodingsFromTree(node,"",codings);
+		String[] codings = new String[1 + ALPH_SIZE];
+		makeCodingsFromTree(node, codings, "");
 
 		out.writeBits(BITS_PER_INT, HUFF_TREE);
 		writeHeader(node, out);
@@ -85,32 +87,34 @@ public class HuffProcessor {
 		}
 
 		String pseudo = codings[PSEUDO_EOF]; 
-		out.writeBits(pseudo.length(), Integer.parseInt(pseudo,2)); 
+		
+		out.writeBits(pseudo.length(), Integer.parseInt(pseudo, 2)); 
 		
 		out.close();
 	}
 
-	private void makeCodingsFromTree(HuffNode node, String guy, String[] encodings) {
-		if (node.myRight == null && node.myLeft == null) {
+	private void makeCodingsFromTree(HuffNode node, String[] encodings, String guy) 
+	{
+		if (node.myRight == null && node.myLeft == null) 
+		{
 			encodings[node.myValue] = guy; 
 			return;
 		}
-		makeCodingsFromTree(node.myLeft, guy + "0", encodings);
-		makeCodingsFromTree(node.myRight, guy + "1", encodings);
+		makeCodingsFromTree(node.myLeft, encodings, guy + "0");
+		makeCodingsFromTree(node.myRight, encodings, guy + "1");
 	}
 
-
-	private void writeHeader(HuffNode root, BitOutputStream out) 
+	private void writeHeader(HuffNode node, BitOutputStream out) 
 	{
-		if (root.myRight != null || root.myLeft != null) {
-			out.writeBits(1,0);
-			writeHeader(root.myLeft, out);
-			writeHeader(root.myRight, out);
+		if (node.myRight != null || node.myLeft != null) {
+			out.writeBits(1, 0);
+			writeHeader(node.myLeft, out);
+			writeHeader(node.myRight, out);
 		}
 		else 
 		{
-			out.writeBits(1,1); 
-			out.writeBits(BITS_PER_WORD + 1, root.myValue);
+			out.writeBits(1, 1); 
+			out.writeBits(1 + BITS_PER_WORD, node.myValue);
 		}
 	}
 
@@ -121,9 +125,9 @@ public class HuffProcessor {
 		if (bits == -1) throw new HuffException("illegal header starts with " + bits);
 		if (bits != HUFF_TREE) throw new HuffException("illegal header starts with " + bits);
 		
-		HuffNode root = readTreeHeader(in);
+		HuffNode head = readTreeHeader(in);
 
-		HuffNode tracker = root;
+		HuffNode tracker = head;
 
 		while (true) 
 		{
@@ -137,13 +141,14 @@ public class HuffProcessor {
 
 				else tracker = tracker.myRight;
 
-				if (tracker.myRight == null && tracker.myLeft == null) { 
+				if (tracker.myRight == null && tracker.myLeft == null) 
+				{ 
 					if (tracker.myValue == PSEUDO_EOF) break;
 
 					else 
 					{ 
 						out.writeBits(BITS_PER_WORD, tracker.myValue);
-						tracker = root;
+						tracker = head;
 					}
 				}
 			}
@@ -159,12 +164,11 @@ public class HuffProcessor {
 
 		if (bits == 0) 
 		{ 
-			HuffNode left = readTreeHeader(in);
-			HuffNode right = readTreeHeader(in);
-			return new HuffNode(0, 0, left, right);
+			HuffNode l = readTreeHeader(in);
+			HuffNode r = readTreeHeader(in);
+			return new HuffNode(0, 0, l, r);
 		}
 		else 
-			return new HuffNode((in.readBits(BITS_PER_WORD + 1)), 0, null, null);
-
+			return new HuffNode((in.readBits(1 + BITS_PER_WORD)), 0, null, null);
 	}
 }
